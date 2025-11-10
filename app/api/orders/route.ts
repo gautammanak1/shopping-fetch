@@ -87,24 +87,44 @@ export async function POST(request: Request) {
 
     const deliveryPartnerId = deliveryPartners && deliveryPartners.length > 0 ? deliveryPartners[0].id : null
 
-    // Calculate shipping cost
+    // Calculate shipping cost (robust for serverless/Vercel)
     const normalizedAddress =
       typeof shipping_address === 'string' && shipping_address.trim().length > 0
         ? shipping_address.trim()
         : ''
     const shippingAddress = normalizedAddress || ''
-    const shippingResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/shipping/calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        shipping_address: shippingAddress,
-        service_type: 'standard',
-      }),
-    })
-    
-    const shippingData = shippingResponse.ok ? await shippingResponse.json() : null
-    const shippingCost = shippingData?.calculation?.shipping_cost || 5.0
-    const estimatedDays = shippingData?.calculation?.estimated_days || 5
+
+    // Prefer origin from request; fallback to envs; avoid localhost on serverless
+    const requestOrigin = (() => {
+      try {
+        return new URL(request.url).origin
+      } catch {
+        return undefined
+      }
+    })()
+    const envOrigin =
+      process.env.NEXT_PUBLIC_BASE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+    const baseOrigin = requestOrigin || envOrigin
+
+    let shippingData: any = null
+    if (baseOrigin) {
+      try {
+        const shippingResponse = await fetch(`${baseOrigin}/api/shipping/calculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shipping_address: shippingAddress,
+            service_type: 'standard',
+          }),
+        })
+        shippingData = shippingResponse.ok ? await shippingResponse.json() : null
+      } catch {
+        // ignore and use defaults below
+      }
+    }
+    const shippingCost = shippingData?.calculation?.shipping_cost ?? 5.0
+    const estimatedDays = shippingData?.calculation?.estimated_days ?? 5
     
     // Calculate estimated delivery date
     const estimatedDeliveryDate = new Date()
