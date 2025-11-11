@@ -107,16 +107,18 @@ export default function AdminPanel() {
 
     setUploadingImage(true)
     try {
-      // Convert to base64 for now (you can upload to a storage service later)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const base64String = reader.result as string
-        // For now, we'll store it as data URL or use a placeholder
-        // In production, upload to Supabase Storage or Cloudinary
-        setFormData({ ...formData, image_url: base64String })
-        setUploadingImage(false)
+      const formDataUpload = new FormData()
+      formDataUpload.append('file', file)
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload,
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Upload failed')
       }
-      reader.readAsDataURL(file)
+      setFormData({ ...formData, image_url: data.url })
+      setUploadingImage(false)
     } catch (error) {
       console.error('Failed to upload image:', error)
       alert('Failed to upload image. Please try again.')
