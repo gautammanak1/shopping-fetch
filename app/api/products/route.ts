@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { supabaseServer } from '@/lib/supabaseServer'
 
 export async function GET(request: Request) {
   try {
@@ -36,13 +37,37 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, description, price, image_url, stock } = body
+    let { name, description, price, image_url, stock } = body
 
     if (!name || !description || !price || !image_url) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    // Normalize image_url: if base64 data URL, upload to storage and replace with public URL
+    if (typeof image_url === 'string' && image_url.startsWith('data:')) {
+      try {
+        const match = image_url.match(/^data:(.+);base64,(.*)$/)
+        if (match) {
+          const contentType = match[1]
+          const base64Data = match[2]
+          const buffer = Buffer.from(base64Data, 'base64')
+          const ext = contentType.split('/').pop() || 'bin'
+          const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+          const filePath = `products/${fileName}`
+          const { error: uploadError } = await supabaseServer.storage
+            .from('product-images')
+            .upload(filePath, buffer, { contentType, upsert: true })
+          if (!uploadError) {
+            const { data: publicData } = supabaseServer.storage
+              .from('product-images')
+              .getPublicUrl(filePath)
+            image_url = publicData.publicUrl
+          }
+        }
+      } catch {}
     }
 
     const sizes = ['S', 'M', 'L', 'XL', 'XXL']

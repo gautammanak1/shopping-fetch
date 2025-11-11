@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { supabaseServer } from '@/lib/supabaseServer'
 
 export async function GET(
   request: Request,
@@ -36,6 +37,30 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+
+    // Normalize image_url on updates: if base64 data URL, upload to storage and replace
+    if (typeof body?.image_url === 'string' && body.image_url.startsWith('data:')) {
+      try {
+        const match = body.image_url.match(/^data:(.+);base64,(.*)$/)
+        if (match) {
+          const contentType = match[1]
+          const base64Data = match[2]
+          const buffer = Buffer.from(base64Data, 'base64')
+          const ext = contentType.split('/').pop() || 'bin'
+          const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+          const filePath = `products/${fileName}`
+          const { error: uploadError } = await supabaseServer.storage
+            .from('product-images')
+            .upload(filePath, buffer, { contentType, upsert: true })
+          if (!uploadError) {
+            const { data: publicData } = supabaseServer.storage
+              .from('product-images')
+              .getPublicUrl(filePath)
+            body.image_url = publicData.publicUrl
+          }
+        }
+      } catch {}
+    }
 
     const { data, error } = await supabase
       .from('products')
