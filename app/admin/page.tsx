@@ -226,9 +226,9 @@ export default function AdminPanel() {
               /> */}
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-[#000D3D]">
-                  Fetch.ai Admin Panel
+                  Fetch.ai Merchandise Admin
                 </h1>
-                <p className="text-sm text-gray-600">Manage your t-shirt products</p>
+                <p className="text-sm text-gray-600">Manage your merch products</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -353,8 +353,7 @@ export default function AdminPanel() {
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         Pricing is currently fixed to {formatTokenAmount(HARDCODED_PRICES[0].amount)}{' '}
-                        {HARDCODED_PRICES[0].currency} (~{formatTokenAmount(HARDCODED_PRICES[1].amount)}{' '}
-                        {HARDCODED_PRICES[1].currency}).
+                        {HARDCODED_PRICES[0].currency}.
                       </p>
                     </div>
 

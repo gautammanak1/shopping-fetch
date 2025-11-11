@@ -1,6 +1,5 @@
 export const HARDCODED_PRICES = [
-  { currency: 'USDC', amount: 0.001 },
-  { currency: 'FET', amount: 0.1 },
+  { currency: 'USD', amount: 0.001 },
 ] as const
 
 export const formatTokenAmount = (value: number) => {

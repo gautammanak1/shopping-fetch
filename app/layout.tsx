@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fetch.ai T-Shirt Store",
-  description: "Premium organic cotton t-shirts - AI-powered shopping experience",
+  title: "Fetch.ai Merchandise",
+  description: "Official Fetch.ai merchandise - AI-powered shopping experience",
 };
 
 export default function RootLayout({

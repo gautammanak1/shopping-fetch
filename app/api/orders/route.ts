@@ -444,7 +444,16 @@ export async function GET(request: Request) {
       query = query.eq('delivery_partner_id', deliveryPartnerId)
     }
 
+
+    // Ensure we fetch a sufficiently large set of orders (avoid implicit small limits)
+    query = query.limit(1000)
+
     const { data, error } = await query
+
+    // Deduplicate by id in case of accidental duplicates from joins or schema drift
+    const uniqueOrders = Array.isArray(data)
+      ? data.filter((order, index, arr) => arr.findIndex((o: any) => o.id === order.id) === index)
+      : []
 
     if (error) {
       return NextResponse.json(
@@ -453,7 +462,7 @@ export async function GET(request: Request) {
       )
     }
 
-    return NextResponse.json({ orders: data || [] })
+    return NextResponse.json({ orders: uniqueOrders })
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },

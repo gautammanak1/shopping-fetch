@@ -1,6 +1,6 @@
-# Fetch.ai T-Shirt Store
+# Fetch.ai Merchandise
 
-A modern e-commerce platform for organic cotton t-shirts with AI-powered shopping using Fetch.ai uagents.
+A modern e-commerce platform for official Fetch.ai merchandise with AI-powered shopping using Fetch.ai uagents.
 
 ## Features
 

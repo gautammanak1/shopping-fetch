@@ -90,10 +90,10 @@ export default function Home() {
               /> */}
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-[#000D3D]">
-                  Fetch.ai T-Shirt Store
+                  Fetch.ai Merchandise
                 </h1>
                 <p className="text-sm text-gray-600 hidden sm:block">
-                  Premium Organic Cotton T-Shirts
+                  Official Fetch.ai Merchandise
                 </p>
               </div>
             </div>
