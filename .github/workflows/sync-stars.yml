@@ -1,0 +1,15 @@
+name: Sync GitHub Stars
+
+on:
+  schedule:
+    - cron: '* * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Self-Triggering Sync
+        run: |
+          curl -X GET "${{ secrets.VERCEL_SYNC_URL || 'https://shopping-fetch-ten.vercel.app' }}/api/github/sync-stars/self-trigger" || true
+
