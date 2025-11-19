@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { shiprocketClient } from '@/lib/shiprocket'
 
-/**
- * Get shipping rates from Shiprocket
- */
 export async function POST(request: Request) {
   try {
     const { pickup_pincode, delivery_pincode, weight = 0.2 } = await request.json()

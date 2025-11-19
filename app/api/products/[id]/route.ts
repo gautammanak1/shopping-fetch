@@ -38,7 +38,6 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
-    // Normalize image_url on updates: if base64 data URL, upload to storage and replace
     if (typeof body?.image_url === 'string' && body.image_url.startsWith('data:')) {
       try {
         const match = body.image_url.match(/^data:(.+);base64,(.*)$/)

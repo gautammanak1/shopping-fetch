@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server'
 
-/**
- * Shiprocket Authentication
- * Gets access token from Shiprocket API
- */
 export async function POST(request: Request) {
   try {
     const email = process.env.SHIPROCKET_EMAIL

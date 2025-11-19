@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// Delivery Partner Interface
 interface DeliveryPartner {
   id: string
   name: string

@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { shiprocketClient } from '@/lib/shiprocket'
 
-/**
- * Track Shiprocket shipment
- */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-/**
- * Agent-friendly product query endpoint
- * This endpoint is designed to be used by the uagents shopping agent
- * to fetch products based on queries
- */
 export async function POST(request: Request) {
   try {
     const { query } = await request.json()
@@ -17,7 +12,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fetch all active products
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
@@ -31,7 +25,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Simple keyword matching (the agent does more sophisticated matching)
     const queryLower = query.toLowerCase()
     const keywords = queryLower.split(/\s+/)
 
@@ -52,10 +45,8 @@ export async function POST(request: Request) {
       .sort((a, b) => b.match_score - a.match_score)
       .slice(0, 5)
 
-    // Format products with full image URLs
     const formatProduct = (product: any) => {
       let imageUrl = product.image_url
-      // If image_url is relative, make it absolute
       if (imageUrl && !imageUrl.startsWith('http')) {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
         imageUrl = `${baseUrl}${imageUrl}`
@@ -63,7 +54,7 @@ export async function POST(request: Request) {
       return {
         ...product,
         image_url: imageUrl,
-        full_image_url: imageUrl, // For agent compatibility
+        full_image_url: imageUrl,
       }
     }
 

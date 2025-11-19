@@ -3,17 +3,15 @@ import { supabase } from '@/lib/supabase'
 import { shiprocketClient } from '@/lib/shiprocket'
 import { SHIPROCKET_CONFIG } from '@/config/shiprocket.config'
 
-// Generate unique tracking number
 function generateTrackingNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase()
   const random = Math.random().toString(36).substring(2, 6).toUpperCase()
   return `TRK-${timestamp}-${random}`
 }
 
-// Extract pincode from address (assuming format includes pincode)
 function extractPincode(address: string): string {
   const pincodeMatch = address.match(/\b\d{6}\b/)
-  return pincodeMatch ? pincodeMatch[0] : '110001' // Default to Delhi if not found
+  return pincodeMatch ? pincodeMatch[0] : '110001'
 }
 
 export async function POST(request: Request) {
@@ -27,7 +25,9 @@ export async function POST(request: Request) {
       user_phone,
       shipping_address,
       payment_status = 'pending',
-      payment_reference = null
+      payment_reference = null,
+      payment_currency = 'FET',
+      github_username = null
     } = await request.json()
 
     if (!product_id || !size) {
@@ -37,7 +37,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate user details
     if (!user_name || !user_email || !user_phone || !shipping_address) {
       return NextResponse.json(
         { error: 'User details are required: name, email, phone, and shipping address' },
@@ -45,7 +44,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate payment status
     if (!['pending', 'paid', 'failed'].includes(payment_status)) {
       return NextResponse.json(
         { error: 'Invalid payment status. Use pending, paid, or failed.' },
@@ -53,7 +51,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check product exists and has stock
+    if (payment_status === 'paid' && !payment_reference) {
+      return NextResponse.json(
+        { error: 'Payment reference is required when payment_status is "paid". Payment must be verified before order confirmation.' },
+        { status: 400 }
+      )
+    }
+
+    if (payment_currency && !['FET', 'USDC'].includes(payment_currency)) {
+      return NextResponse.json(
+        { error: 'Invalid payment currency. Use FET or USDC.' },
+        { status: 400 }
+      )
+    }
+
     const { data: product, error: productError } = await supabase
       .from('products')
       .select('*')
@@ -75,9 +86,42 @@ export async function POST(request: Request) {
       )
     }
 
+    const originalAmount = product.price * quantity
+
+    let discountPercentage = 0
+    let discountAmount = 0
+    let finalAmount = originalAmount
+    let githubVerified = false
+
+    if (github_username || user_email) {
+      try {
+        const discountResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/discount/calculate`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              github_username,
+              user_email,
+              original_amount: originalAmount,
+            }),
+          }
+        )
+
+        if (discountResponse.ok) {
+          const discountData = await discountResponse.json()
+          discountPercentage = discountData.discount_percentage || 0
+          discountAmount = discountData.discount_amount || 0
+          finalAmount = discountData.final_amount || originalAmount
+          githubVerified = discountData.github_verified || false
+        }
+      } catch (error) {
+        console.error('Discount calculation error:', error)
+      }
+    }
+
     const paymentConfirmed = payment_status === 'paid'
 
-    // Assign delivery partner (like Shiprocket) - find available partner
     const { data: deliveryPartners } = await supabase
       .from('delivery_partners')
       .select('*')
@@ -87,14 +131,12 @@ export async function POST(request: Request) {
 
     const deliveryPartnerId = deliveryPartners && deliveryPartners.length > 0 ? deliveryPartners[0].id : null
 
-    // Calculate shipping cost (robust for serverless/Vercel)
     const normalizedAddress =
       typeof shipping_address === 'string' && shipping_address.trim().length > 0
         ? shipping_address.trim()
         : ''
     const shippingAddress = normalizedAddress || ''
 
-    // Prefer origin from request; fallback to envs; avoid localhost on serverless
     const requestOrigin = (() => {
       try {
         return new URL(request.url).origin
@@ -120,13 +162,11 @@ export async function POST(request: Request) {
         })
         shippingData = shippingResponse.ok ? await shippingResponse.json() : null
       } catch {
-        // ignore and use defaults below
       }
     }
     const shippingCost = shippingData?.calculation?.shipping_cost ?? 5.0
     const estimatedDays = shippingData?.calculation?.estimated_days ?? 5
     
-    // Calculate estimated delivery date
     const estimatedDeliveryDate = new Date()
     estimatedDeliveryDate.setDate(estimatedDeliveryDate.getDate() + estimatedDays)
 
@@ -134,7 +174,6 @@ export async function POST(request: Request) {
 
     const orderStatus = paymentConfirmed ? 'confirmed' : 'pending'
 
-    // Build insert payload
     const baseInsert: any = {
       product_id,
       size,
@@ -149,9 +188,14 @@ export async function POST(request: Request) {
       shipping_cost: shippingCost,
       estimated_delivery_date: estimatedDeliveryDate.toISOString().split('T')[0],
       service_type: 'standard',
+      original_amount: originalAmount,
+      discount_percentage: discountPercentage,
+      discount_amount: discountAmount,
+      final_amount: finalAmount,
+      github_username: github_username?.toLowerCase() || null,
+      github_verified: githubVerified,
     }
 
-    // Attempt insert with progressive fallbacks to handle schema drift robustly
     const tryInsert = async (payload: any) =>
       await supabase
         .from('orders')
@@ -162,21 +206,27 @@ export async function POST(request: Request) {
     let order,
       orderError
 
-    // Attempt 1: include payment fields
     ;({ data: order, error: orderError } = await tryInsert({
       ...baseInsert,
       payment_status,
       payment_reference,
+      payment_currency: payment_currency || 'FET',
     }))
+    
+    if (orderError && orderError.code === '42703') {
+      ;({ data: order, error: orderError } = await tryInsert({
+        ...baseInsert,
+        payment_status,
+        payment_reference,
+      }))
+    }
 
-    // Attempt 2: remove payment fields
     if (orderError || !order) {
       ;({ data: order, error: orderError } = await tryInsert({
         ...baseInsert,
       }))
     }
 
-    // Attempt 3: minimal required fields only (no optional admin columns)
     if (orderError || !order) {
       const minimalInsert: any = {
         product_id,
@@ -191,7 +241,6 @@ export async function POST(request: Request) {
       }
       ;({ data: order, error: orderError } = await tryInsert(minimalInsert))
 
-      // If minimal insert succeeds, update extras best-effort (ignore update errors)
       if (order && (deliveryPartnerId || shippingCost || estimatedDeliveryDate)) {
         await supabase
           .from('orders')
@@ -206,7 +255,6 @@ export async function POST(request: Request) {
     }
 
     if (orderError || !order) {
-      // Surface a 400 with error details instead of opaque 500 to aid debugging
       const message = (orderError as any)?.message || 'Failed to create order'
       const details = (orderError as any)?.details || null
       return NextResponse.json(
@@ -303,7 +351,7 @@ export async function POST(request: Request) {
           shipping_phone: user_phone.replace(/[\s\-\(\)\+]/g, '').replace(/^91/, ''),
           order_items: orderItems,
           payment_method: 'Prepaid' as const,
-          sub_total: Number((product.price * quantity).toFixed(2)),
+          sub_total: Number(finalAmount.toFixed(2)),
           length: 15,
           breadth: 10,
           height: 2,
@@ -346,6 +394,8 @@ export async function POST(request: Request) {
             status: 'confirmed',
             updated_at: new Date().toISOString(),
             payment_status: 'paid',
+            payment_reference: payment_reference,
+            payment_currency: payment_currency || 'FET',
           })
           .eq('id', order.id)
 
@@ -391,6 +441,13 @@ export async function POST(request: Request) {
           status: paymentConfirmed ? 'confirmed' : 'pending',
           payment_status,
           payment_reference,
+          payment_currency: payment_currency || 'FET',
+          original_amount: originalAmount,
+          discount_percentage: discountPercentage,
+          discount_amount: discountAmount,
+          final_amount: finalAmount,
+          github_username: github_username?.toLowerCase() || null,
+          github_verified: githubVerified,
         },
         message: paymentConfirmed
           ? 'Order placed successfully!'
@@ -408,6 +465,13 @@ export async function POST(request: Request) {
         estimated_days: estimatedDays,
         payment_status,
         payment_reference,
+        payment_currency: payment_currency || 'FET',
+        original_amount: originalAmount,
+        discount_percentage: discountPercentage,
+        discount_amount: discountAmount,
+        final_amount: finalAmount,
+        github_verified: githubVerified,
+        github_username: github_username?.toLowerCase() || null,
       },
       { status: paymentConfirmed ? 201 : 202 }
     )
@@ -419,7 +483,6 @@ export async function POST(request: Request) {
   }
 }
 
-// Get all orders (for admin/dealer tracking)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -444,13 +507,10 @@ export async function GET(request: Request) {
       query = query.eq('delivery_partner_id', deliveryPartnerId)
     }
 
-
-    // Ensure we fetch a sufficiently large set of orders (avoid implicit small limits)
     query = query.limit(1000)
 
     const { data, error } = await query
 
-    // Deduplicate by id in case of accidental duplicates from joins or schema drift
     const uniqueOrders = Array.isArray(data)
       ? data.filter((order, index, arr) => arr.findIndex((o: any) => o.id === order.id) === index)
       : []

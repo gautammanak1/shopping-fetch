@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
 import { shiprocketClient } from '@/lib/shiprocket'
 
-/**
- * Verify if an order exists in Shiprocket
- * GET /api/shiprocket/verify?order_id=xxx
- * GET /api/shiprocket/verify?shipment_id=123
- */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -22,7 +17,6 @@ export async function GET(request: Request) {
     let result
 
     if (orderId) {
-      // Get order by Shiprocket order ID
       try {
         result = await shiprocketClient.getOrderByOrderId(orderId)
         return NextResponse.json({
@@ -33,7 +27,6 @@ export async function GET(request: Request) {
           message: `Order ${orderId} found in Shiprocket`,
         })
       } catch (error: any) {
-        // Check if error is "not found"
         if (error.message?.includes('not found') || error.message?.includes('404')) {
           return NextResponse.json({
             success: true,
@@ -47,7 +40,6 @@ export async function GET(request: Request) {
     }
 
     if (shipmentId) {
-      // Get shipment by shipment ID
       try {
         const shipmentIdNum = parseInt(shipmentId, 10)
         if (isNaN(shipmentIdNum)) {
@@ -65,7 +57,6 @@ export async function GET(request: Request) {
           message: `Shipment ${shipmentId} found in Shiprocket`,
         })
       } catch (error: any) {
-        // Check if error is "not found"
         if (error.message?.includes('not found') || error.message?.includes('404')) {
           return NextResponse.json({
             success: true,

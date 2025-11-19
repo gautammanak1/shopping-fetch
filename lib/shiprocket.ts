@@ -1,8 +1,3 @@
-/**
- * Shiprocket API Integration
- * Handles authentication, shipment creation, tracking, etc.
- */
-
 import { SHIPROCKET_CONFIG } from '@/config/shiprocket.config'
 
 const SHIPROCKET_API_BASE = SHIPROCKET_CONFIG.API_BASE_URL
@@ -19,29 +14,29 @@ interface ShiprocketAuthResponse {
 
 interface ShiprocketOrder {
   order_id: string
-  order_date: string // Format: YYYY-MM-DD
-  pickup_location: string // Name from Shiprocket dashboard
+  order_date: string
+  pickup_location: string
   billing_customer_name: string
   billing_last_name?: string
   billing_address: string
   billing_address_2?: string
   billing_city: string
-  billing_pincode: string // 6 digits
+  billing_pincode: string
   billing_state: string
   billing_country: string
   billing_email: string
-  billing_phone: string // Numbers only, no spaces/special chars
+  billing_phone: string
   shipping_is_billing: boolean
   shipping_customer_name: string
   shipping_last_name?: string
   shipping_address: string
   shipping_address_2?: string
   shipping_city: string
-  shipping_pincode: string // 6 digits
+  shipping_pincode: string
   shipping_state: string
   shipping_country: string
   shipping_email: string
-  shipping_phone: string // Numbers only
+  shipping_phone: string
   order_items: Array<{
     name: string
     sku: string
@@ -50,10 +45,10 @@ interface ShiprocketOrder {
   }>
   payment_method: 'Prepaid' | 'Cod'
   sub_total: number
-  length: number // cm
-  breadth: number // cm
-  height: number // cm
-  weight: number // kg
+  length: number
+  breadth: number
+  height: number
+  weight: number
 }
 
 class ShiprocketClient {
@@ -61,14 +56,10 @@ class ShiprocketClient {
   private tokenExpiry: Date | null = null
 
   async getAuthToken(): Promise<string> {
-    // Check if token is still valid (valid for 240 hours = 10 days)
     if (this.token && this.tokenExpiry && new Date() < this.tokenExpiry) {
       return this.token
     }
 
-    // Get API user credentials (NOT the main Shiprocket login credentials)
-    // Hardcoded fallback from config (tested and working)
-    // Environment variables override if set
     const email = process.env.SHIPROCKET_EMAIL || SHIPROCKET_CONFIG.EMAIL
     const password = process.env.SHIPROCKET_PASSWORD || SHIPROCKET_CONFIG.PASSWORD
 
@@ -76,15 +67,14 @@ class ShiprocketClient {
       throw new Error('Shiprocket API user credentials not configured. Please set SHIPROCKET_EMAIL and SHIPROCKET_PASSWORD (these should be API user credentials, not your main login)')
     }
 
-    // POST /v1/external/auth/login with API user credentials
     const response = await fetch(`${SHIPROCKET_API_BASE}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ 
-        email,  // API user email (different from registered email)
-        password // API user password
+        email,
+        password
       }),
     })
 
@@ -96,13 +86,11 @@ class ShiprocketClient {
         const errorData = JSON.parse(errorText)
         errorMessage = errorData.message || errorData.error || errorMessage
       } catch {
-        // If not JSON, use the text
         if (errorText) {
           errorMessage = errorText
         }
       }
       
-      // More helpful error message
       if (response.status === 403 || response.status === 401) {
         errorMessage = `Access forbidden. Please check:
         1. API user email is different from your registered Shiprocket email
@@ -117,7 +105,6 @@ class ShiprocketClient {
     const data: ShiprocketAuthResponse = await response.json()
     this.token = data.token
     
-    // Token valid for 240 hours (10 days) according to docs
     this.tokenExpiry = data.expires_at 
       ? new Date(data.expires_at)
       : new Date(Date.now() + SHIPROCKET_CONFIG.TOKEN_VALIDITY_HOURS * 60 * 60 * 1000)
@@ -146,7 +133,6 @@ class ShiprocketClient {
         const errorData = JSON.parse(responseText)
         errorMessage = errorData.message || errorData.error || errorData.errors || errorMessage
         
-        // If it's a pickup location error, show available locations
         if (errorData.data && errorData.data.data && Array.isArray(errorData.data.data)) {
           const locations = errorData.data.data.map((loc: any) => loc.pickup_location).filter(Boolean)
           if (locations.length > 0) {
@@ -155,7 +141,6 @@ class ShiprocketClient {
           }
         }
         
-        // Log full error for debugging
         console.error('Shiprocket createOrder error:', JSON.stringify(errorData, null, 2))
       } catch {
         if (responseText) {
@@ -174,8 +159,6 @@ class ShiprocketClient {
       throw new Error('Invalid JSON response from Shiprocket')
     }
     
-    // Shiprocket returns order_id and shipment_id
-    // Handle different response structures
     const orderId = result.order_id || result.orderId || result.data?.order_id
     const shipmentId = result.shipment_id || result.shipmentId || result.data?.shipment_id
     
@@ -189,8 +172,6 @@ class ShiprocketClient {
   async assignAWB(shipmentId: number, courierId?: number) {
     const token = await this.getAuthToken()
 
-    // POST /v1/external/courier/assign/awb
-    // According to docs: You will get awb_code and courier name in response
     const response = await fetch(`${SHIPROCKET_API_BASE}/courier/assign/awb`, {
       method: 'POST',
       headers: {
@@ -218,19 +199,16 @@ class ShiprocketClient {
     }
 
     const result = await response.json()
-    // Returns: { awb_code, courier_name }
     return result
   }
 
   async generateAWB(shipmentId: number) {
-    // Legacy method - now uses assignAWB
     return await this.assignAWB(shipmentId)
   }
 
   async generatePickup(shipmentIds: number[]) {
     const token = await this.getAuthToken()
 
-    // POST /v1/external/courier/generate/pickup
     const response = await fetch(`${SHIPROCKET_API_BASE}/courier/generate/pickup`, {
       method: 'POST',
       headers: {
@@ -238,7 +216,7 @@ class ShiprocketClient {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
-        shipment_id: shipmentIds, // Array of shipment IDs
+        shipment_id: shipmentIds,
       }),
     })
 
@@ -311,8 +289,6 @@ class ShiprocketClient {
   async getShippingRates(pickupPincode: string, deliveryPincode: string, weight: number) {
     const token = await this.getAuthToken()
 
-    // GET /v1/external/courier/serviceability/ - step 3 from docs
-    // To get serviceable courier with shipping charge
     const rateResponse = await fetch(`${SHIPROCKET_API_BASE}/courier/serviceability/?pickup_postcode=${pickupPincode}&delivery_postcode=${deliveryPincode}&weight=${weight}&cod=0`, {
       method: 'GET',
       headers: {
@@ -335,10 +311,9 @@ class ShiprocketClient {
     }
 
     const rates = await rateResponse.json()
-    // Return simplified rate structure
     return {
       available: rates.available || false,
-      rate: rates.rate || 5.0, // Default rate if not available
+      rate: rates.rate || 5.0,
       estimated_days: rates.estimated_days || 5,
       courier_company_id: rates.courier_company_id,
       courier_name: rates.courier_name,
@@ -346,12 +321,6 @@ class ShiprocketClient {
     }
   }
 
-  /**
-   * Get orders from Shiprocket
-   * @param page Page number (default: 1)
-   * @param perPage Items per page (default: 100)
-   * @param filters Optional filters (order_id, channel_id, etc.)
-   */
   async getOrders(page: number = 1, perPage: number = 100, filters?: {
     order_id?: string
     channel_id?: string
@@ -359,7 +328,6 @@ class ShiprocketClient {
   }) {
     const token = await this.getAuthToken()
 
-    // Build query params
     const params = new URLSearchParams({
       page: page.toString(),
       per_page: perPage.toString(),
@@ -392,9 +360,6 @@ class ShiprocketClient {
     return await response.json()
   }
 
-  /**
-   * Get a specific order by Shiprocket order ID
-   */
   async getOrderByOrderId(shiprocketOrderId: string) {
     const token = await this.getAuthToken()
 
@@ -422,9 +387,6 @@ class ShiprocketClient {
     return await response.json()
   }
 
-  /**
-   * Get shipment details by shipment ID
-   */
   async getShipment(shipmentId: number) {
     const token = await this.getAuthToken()
 

@@ -23,14 +23,12 @@ export async function POST(request: Request) {
     const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${fileExt}`
     const filePath = `products/${fileName}`
 
-    // Ensure bucket exists (requires SUPABASE_SERVICE_ROLE_KEY)
     try {
       const { data: bucketInfo } = await supabaseServer.storage.getBucket('product-images')
       if (!bucketInfo) {
         await supabaseServer.storage.createBucket('product-images', { public: true })
       }
     } catch {
-      // ignore; upload will surface a clear error if bucket truly doesn't exist
     }
 
     const { error: uploadError } = await supabaseServer.storage

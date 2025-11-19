@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    let { name, description, price, image_url, stock } = body
+    let { name, description, price, image_url, stock, product_type, sizes } = body
 
     if (!name || !description || !price || !image_url) {
       return NextResponse.json(
@@ -46,7 +46,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Normalize image_url: if base64 data URL, upload to storage and replace with public URL
     if (typeof image_url === 'string' && image_url.startsWith('data:')) {
       try {
         const match = image_url.match(/^data:(.+);base64,(.*)$/)
@@ -70,14 +69,13 @@ export async function POST(request: Request) {
       } catch {}
     }
 
-    const sizes = ['S', 'M', 'L', 'XL', 'XXL']
-    const defaultStock = stock || {
-      S: 0,
-      M: 0,
-      L: 0,
-      XL: 0,
-      XXL: 0
-    }
+    const productType = product_type || 't-shirt'
+    const productSizes = sizes || (['t-shirt', 'hoodie', 'cap'].includes(productType) ? ['S', 'M', 'L', 'XL', 'XXL'] : ['One Size'])
+    const defaultStock = stock || (
+      ['t-shirt', 'hoodie', 'cap'].includes(productType)
+        ? { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
+        : { 'One Size': 0 }
+    )
 
     const { data, error } = await supabase
       .from('products')
@@ -87,7 +85,8 @@ export async function POST(request: Request) {
           description,
           price,
           image_url,
-          sizes,
+          product_type: productType,
+          sizes: productSizes,
           stock: defaultStock,
           active: true,
         },

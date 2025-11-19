@@ -13,6 +13,7 @@ export interface Product {
   image_url: string
   sizes: string[]
   stock: Record<string, number>
+  product_type?: 't-shirt' | 'hoodie' | 'pen' | 'cap' | 'diary' | 'bottle' | 'funky-bag'
   active: boolean
   created_at: string
   updated_at: string
@@ -39,7 +40,14 @@ export interface Order {
   delivery_partner_id: string | null
   payment_status: string | null
   payment_reference: string | null
+  payment_currency?: 'FET' | 'USDC' | null
   service_type: string | null
+  original_amount?: number | null
+  discount_percentage?: number | null
+  discount_amount?: number | null
+  final_amount?: number | null
+  github_username?: string | null
+  github_verified?: boolean | null
   products?: {
     name: string
     price: number
@@ -55,6 +63,17 @@ export interface Dealer {
   location: string
   active: boolean
   assigned_orders_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface VerifiedGitHubUser {
+  id: string
+  github_username: string
+  user_email: string | null
+  repo_owner: string
+  repo_name: string
+  verified_at: string
   created_at: string
   updated_at: string
 }

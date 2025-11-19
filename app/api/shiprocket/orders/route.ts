@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
 import { shiprocketClient } from '@/lib/shiprocket'
 
-/**
- * Get all orders from Shiprocket
- * GET /api/shiprocket/orders?page=1&per_page=100&order_id=xxx&status=xxx
- */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

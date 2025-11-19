@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/github/sync-stars",
+      "schedule": "* * * * *"
+    }
+  ]
+}
+

@@ -18,18 +18,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Calculate shipping cost based on service type
-    const baseCost = 5.0 // Base shipping cost
+    const baseCost = 5.0
     const serviceMultipliers = {
       standard: 1.0,
       express: 1.5,
       same_day: 2.5,
     }
 
-    const weightCost = product_weight * 2 // $2 per kg
+    const weightCost = product_weight * 2
     const shippingCost = (baseCost + weightCost) * (serviceMultipliers[service_type as keyof typeof serviceMultipliers] || 1.0)
 
-    // Estimated delivery days
     const estimatedDays = {
       standard: 5,
       express: 2,
