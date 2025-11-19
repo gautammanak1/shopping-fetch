@@ -84,13 +84,21 @@ export async function POST(request: Request) {
 
       if (existingUsernames.has(username)) {
         try {
-          const { error: updateError } = await supabase
+          const { data: existingUser } = await supabase
             .from('verified_github_users')
-            .update({ verified_at: starredAt })
+            .select('verified_at')
             .eq('github_username', username)
+            .single()
 
-          if (!updateError) {
-            updatedUsers++
+          if (existingUser && existingUser.verified_at !== starredAt) {
+            const { error: updateError } = await supabase
+              .from('verified_github_users')
+              .update({ verified_at: starredAt })
+              .eq('github_username', username)
+
+            if (!updateError) {
+              updatedUsers++
+            }
           }
         } catch (e) {
         }

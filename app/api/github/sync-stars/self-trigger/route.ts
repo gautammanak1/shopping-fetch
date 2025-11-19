@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10
 
-const SYNC_INTERVAL = 1000
-const MAX_SYNCS_PER_CALL = 8
+const SYNC_INTERVAL = 2000
+const MAX_SYNCS_PER_CALL = 4
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
@@ -12,13 +12,14 @@ export async function GET() {
   
   const sync = async () => {
     try {
-      await fetch(`${baseUrl}/api/github/sync-stars`, {
+      const response = await fetch(`${baseUrl}/api/github/sync-stars`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-suppress-logs': 'true',
         },
       })
+      await response.json()
     } catch (error) {
     }
   }
