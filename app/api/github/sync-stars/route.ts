@@ -80,17 +80,21 @@ export async function POST(request: Request) {
           break
         }
         
-        if (stargazers.length === 0 && page === 1) {
-          return NextResponse.json({
-            success: true,
-            message: 'No stargazers found',
-            synced: 0,
-            total_stargazers: 0,
-            repo: `${REPO_OWNER}/${REPO_NAME}`,
-          })
-        }
-        
         if (stargazers.length === 0) {
+          if (page === 1) {
+            return NextResponse.json({
+              success: true,
+              message: 'No stargazers found',
+              synced: 0,
+              total_stargazers: 0,
+              repo: `${REPO_OWNER}/${REPO_NAME}`,
+              debug: {
+                page,
+                response_type: Array.isArray(stargazers) ? 'array' : typeof stargazers,
+                response_sample: JSON.stringify(stargazers).substring(0, 200),
+              },
+            })
+          }
           break
         }
 
