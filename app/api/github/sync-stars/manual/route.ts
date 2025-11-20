@@ -16,6 +16,7 @@ export async function GET() {
       headers: {
         'Content-Type': 'application/json',
       },
+      cache: 'no-store',
     })
     
     const result = await response.json()
@@ -29,6 +30,7 @@ export async function GET() {
         has_token: hasToken,
         base_url: baseUrl,
       },
+      response_status: response.status,
     })
   } catch (error: any) {
     return NextResponse.json({
