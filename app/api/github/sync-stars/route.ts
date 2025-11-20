@@ -81,21 +81,6 @@ export async function POST(request: Request) {
         }
         
         if (stargazers.length === 0) {
-          if (page === 1) {
-            return NextResponse.json({
-              success: true,
-              message: 'No stargazers found',
-              synced: 0,
-              total_stargazers: 0,
-              repo: `${REPO_OWNER}/${REPO_NAME}`,
-              debug: {
-                page,
-                response_type: Array.isArray(stargazers) ? 'array' : typeof stargazers,
-                response_sample: JSON.stringify(stargazers).substring(0, 200),
-                headers_used: headers,
-              },
-            })
-          }
           break
         }
         
@@ -132,6 +117,10 @@ export async function POST(request: Request) {
         error: errorMessage,
         repo: `${REPO_OWNER}/${REPO_NAME}`,
         message: 'Failed to fetch stargazers from GitHub',
+        debug: {
+          page_reached: page,
+          headers_used: headers,
+        },
       }, { status: 500 })
     }
 
@@ -141,6 +130,12 @@ export async function POST(request: Request) {
         message: 'No stargazers found',
         synced: 0,
         total_stargazers: 0,
+        repo: `${REPO_OWNER}/${REPO_NAME}`,
+        debug: {
+          page_reached: page,
+          has_error: hasError,
+          error_message: errorMessage,
+        },
       })
     }
 
