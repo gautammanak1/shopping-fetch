@@ -92,10 +92,21 @@ export async function POST(request: Request) {
                 page,
                 response_type: Array.isArray(stargazers) ? 'array' : typeof stargazers,
                 response_sample: JSON.stringify(stargazers).substring(0, 200),
+                headers_used: headers,
               },
             })
           }
           break
+        }
+        
+        if (!suppressLogs && page === 1) {
+          console.log(`Found ${stargazers.length} stargazers on page ${page}`, {
+            first_stargazer: stargazers[0] ? {
+              has_user: !!stargazers[0].user,
+              username: stargazers[0].user?.login,
+              starred_at: stargazers[0].starred_at,
+            } : null,
+          })
         }
 
         allStargazers = allStargazers.concat(stargazers)
