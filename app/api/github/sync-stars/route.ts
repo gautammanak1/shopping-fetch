@@ -34,6 +34,10 @@ export async function POST(request: Request) {
         const response = await fetch(`${githubUrl}?page=${page}&per_page=${perPage}`, { headers })
         
         if (!response.ok) {
+          const errorText = await response.text()
+          if (!suppressLogs) {
+            console.error(`GitHub API error: ${response.status} - ${errorText}`)
+          }
           break
         }
 
@@ -51,6 +55,9 @@ export async function POST(request: Request) {
 
         page++
       } catch (error: any) {
+        if (!suppressLogs) {
+          console.error('Error fetching stargazers:', error)
+        }
         break
       }
     }
@@ -64,12 +71,19 @@ export async function POST(request: Request) {
       })
     }
 
-    const { data: existingUsers } = await supabase
+    const { data: existingUsers, error: fetchError } = await supabase
       .from('verified_github_users')
-      .select('github_username')
+      .select('github_username, verified_at')
 
-    const existingUsernames = new Set(
-      (existingUsers || []).map((u: any) => u.github_username.toLowerCase())
+    if (fetchError) {
+      return NextResponse.json(
+        { error: 'Failed to fetch existing users', details: fetchError.message },
+        { status: 500 }
+      )
+    }
+
+    const existingUsernames = new Map(
+      (existingUsers || []).map((u: any) => [u.github_username.toLowerCase(), u.verified_at])
     )
 
     let newUsers = 0
@@ -81,26 +95,25 @@ export async function POST(request: Request) {
       if (!username) continue
 
       const starredAt = stargazer.starred_at || new Date().toISOString()
+      const existingVerifiedAt = existingUsernames.get(username)
 
-      if (existingUsernames.has(username)) {
-        try {
-          const { data: existingUser } = await supabase
-            .from('verified_github_users')
-            .select('verified_at')
-            .eq('github_username', username)
-            .single()
-
-          if (existingUser && existingUser.verified_at !== starredAt) {
+      if (existingVerifiedAt !== undefined) {
+        if (existingVerifiedAt !== starredAt) {
+          try {
             const { error: updateError } = await supabase
               .from('verified_github_users')
               .update({ verified_at: starredAt })
               .eq('github_username', username)
 
-            if (!updateError) {
+            if (updateError) {
+              errors.push(`${username}: ${updateError.message}`)
+            } else {
               updatedUsers++
+              existingUsernames.set(username, starredAt)
             }
+          } catch (e: any) {
+            errors.push(`${username}: ${e.message}`)
           }
-        } catch (e) {
         }
         continue
       }
@@ -117,12 +130,21 @@ export async function POST(request: Request) {
           })
 
         if (insertError) {
-          if (insertError.code !== '23505') {
+          if (insertError.code === '23505') {
+            const { error: updateError } = await supabase
+              .from('verified_github_users')
+              .update({ verified_at: starredAt })
+              .eq('github_username', username)
+            
+            if (!updateError) {
+              updatedUsers++
+            }
+          } else {
             errors.push(`${username}: ${insertError.message}`)
           }
         } else {
           newUsers++
-          existingUsernames.add(username)
+          existingUsernames.set(username, starredAt)
         }
       } catch (e: any) {
         errors.push(`${username}: ${e.message}`)
@@ -135,7 +157,7 @@ export async function POST(request: Request) {
       total_stargazers: allStargazers.length,
       new_users: newUsers,
       updated_users: updatedUsers,
-      errors: errors.length > 0 ? errors : undefined,
+      errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
     })
     
     if (suppressLogs) {

@@ -18,9 +18,16 @@ export async function GET() {
           'Content-Type': 'application/json',
           'x-suppress-logs': 'true',
         },
+        signal: AbortSignal.timeout(8000),
       })
-      await response.json()
-    } catch (error) {
+      const result = await response.json()
+      if (!response.ok && result.error) {
+        console.error('Sync error:', result.error, result.details)
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('Sync fetch error:', error.message)
+      }
     }
   }
   
