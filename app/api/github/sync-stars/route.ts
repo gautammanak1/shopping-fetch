@@ -22,10 +22,11 @@ export async function POST(request: Request) {
     const githubUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/stargazers`
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3.star+json',
+      'User-Agent': 'Shopping-Fetch-App',
     }
     
     if (GITHUB_TOKEN) {
-      headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`
+      headers['Authorization'] = `token ${GITHUB_TOKEN}`
     }
 
     let allStargazers: any[] = []
