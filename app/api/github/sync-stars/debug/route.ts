@@ -11,7 +11,7 @@ export async function GET() {
   const stargazersUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/stargazers`
   
   const headers: Record<string, string> = {
-    'Accept': 'application/vnd.github.v3+json',
+    'Accept': 'application/vnd.github.v3.star+json',
     'User-Agent': 'Shopping-Fetch-App',
   }
   
@@ -20,7 +20,9 @@ export async function GET() {
   }
 
   try {
-    const repoResponse = await fetch(githubUrl, { headers })
+    const repoResponse = await fetch(githubUrl, { 
+      headers: { ...headers, 'Accept': 'application/vnd.github.v3+json' }
+    })
     const repoData = await repoResponse.ok ? await repoResponse.json() : null
     
     const starsResponse = await fetch(`${stargazersUrl}?per_page=1`, { headers })
