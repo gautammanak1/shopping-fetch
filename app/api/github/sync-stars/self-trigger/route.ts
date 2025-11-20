@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10
 
-const SYNC_INTERVAL = 2000
-const MAX_SYNCS_PER_CALL = 4
+const SYNC_INTERVAL = 1000
+const MAX_SYNCS_PER_CALL = 8
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
@@ -19,6 +19,7 @@ export async function GET() {
           'x-suppress-logs': 'true',
         },
         signal: AbortSignal.timeout(8000),
+        cache: 'no-store',
       })
       const result = await response.json()
       if (!response.ok && result.error) {
@@ -40,6 +41,7 @@ export async function GET() {
           await fetch(`${baseUrl}/api/github/sync-stars/self-trigger`, {
             method: 'GET',
             signal: AbortSignal.timeout(9000),
+            cache: 'no-store',
           }).catch(() => {})
         } catch (error) {
         }
