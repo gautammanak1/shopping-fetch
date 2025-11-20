@@ -20,30 +20,66 @@ export async function POST(request: Request) {
     }
 
     const githubUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/stargazers`
-    const headers = {
-      'Authorization': `token ${GITHUB_TOKEN}`,
+    const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3.star+json',
+    }
+    
+    if (GITHUB_TOKEN) {
+      headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`
     }
 
     let allStargazers: any[] = []
     let page = 1
     const perPage = 100
+    let hasError = false
+    let errorMessage = ''
 
     while (true) {
       try {
-        const response = await fetch(`${githubUrl}?page=${page}&per_page=${perPage}`, { headers })
+        const response = await fetch(`${githubUrl}?page=${page}&per_page=${perPage}`, { 
+          headers,
+          cache: 'no-store'
+        })
         
         if (!response.ok) {
           const errorText = await response.text()
+          hasError = true
+          errorMessage = `GitHub API error: ${response.status} - ${errorText}`
           if (!suppressLogs) {
-            console.error(`GitHub API error: ${response.status} - ${errorText}`)
+            console.error(errorMessage)
           }
+          
+          if (response.status === 404) {
+            return NextResponse.json({
+              success: false,
+              error: `Repository not found: ${REPO_OWNER}/${REPO_NAME}`,
+              message: 'Please check REPO_OWNER and REPO_NAME environment variables',
+            }, { status: 404 })
+          }
+          
+          if (response.status === 401 || response.status === 403) {
+            return NextResponse.json({
+              success: false,
+              error: 'GitHub authentication failed',
+              message: 'Please check GITHUB_TOKEN environment variable',
+            }, { status: 401 })
+          }
+          
           break
         }
 
         const stargazers = await response.json()
         
-        if (!stargazers || stargazers.length === 0) {
+        if (!Array.isArray(stargazers)) {
+          hasError = true
+          errorMessage = `Invalid response format: ${JSON.stringify(stargazers).substring(0, 200)}`
+          if (!suppressLogs) {
+            console.error(errorMessage)
+          }
+          break
+        }
+        
+        if (stargazers.length === 0) {
           break
         }
 
@@ -55,11 +91,22 @@ export async function POST(request: Request) {
 
         page++
       } catch (error: any) {
+        hasError = true
+        errorMessage = `Error fetching stargazers: ${error.message}`
         if (!suppressLogs) {
-          console.error('Error fetching stargazers:', error)
+          console.error(errorMessage)
         }
         break
       }
+    }
+    
+    if (hasError && allStargazers.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: errorMessage,
+        repo: `${REPO_OWNER}/${REPO_NAME}`,
+        message: 'Failed to fetch stargazers from GitHub',
+      }, { status: 500 })
     }
 
     if (allStargazers.length === 0) {
