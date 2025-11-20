@@ -46,6 +46,7 @@ export async function GET() {
         first_stargazer: Array.isArray(starsData) && starsData.length > 0 ? {
           username: starsData[0].user?.login,
           starred_at: starsData[0].starred_at,
+          full_object: starsData[0],
         } : null,
         error: !starsResponse.ok ? await starsResponse.text() : null,
       },

@@ -80,6 +80,16 @@ export async function POST(request: Request) {
           break
         }
         
+        if (stargazers.length === 0 && page === 1) {
+          return NextResponse.json({
+            success: true,
+            message: 'No stargazers found',
+            synced: 0,
+            total_stargazers: 0,
+            repo: `${REPO_OWNER}/${REPO_NAME}`,
+          })
+        }
+        
         if (stargazers.length === 0) {
           break
         }
@@ -139,10 +149,15 @@ export async function POST(request: Request) {
     const errors: string[] = []
 
     for (const stargazer of allStargazers) {
-      const username = stargazer.user?.login?.toLowerCase()
-      if (!username) continue
+      const username = stargazer.user?.login?.toLowerCase() || stargazer.login?.toLowerCase()
+      if (!username) {
+        if (!suppressLogs) {
+          console.warn('Skipping stargazer without username:', JSON.stringify(stargazer).substring(0, 100))
+        }
+        continue
+      }
 
-      const starredAt = stargazer.starred_at || new Date().toISOString()
+      const starredAt = stargazer.starred_at || stargazer.starredAt || new Date().toISOString()
       const existingVerifiedAt = existingUsernames.get(username)
 
       if (existingVerifiedAt !== undefined) {
