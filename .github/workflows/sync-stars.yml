@@ -9,7 +9,17 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Self-Triggering Sync
+      - name: Start Continuous Sync
         run: |
+          curl -X GET "${{ secrets.VERCEL_SYNC_URL || 'https://shopping-fetch-ten.vercel.app' }}/api/github/sync-stars/self-trigger" || true
+      
+      - name: Wait and trigger again
+        run: |
+          sleep 30
+          curl -X GET "${{ secrets.VERCEL_SYNC_URL || 'https://shopping-fetch-ten.vercel.app' }}/api/github/sync-stars/self-trigger" || true
+      
+      - name: Final trigger
+        run: |
+          sleep 30
           curl -X GET "${{ secrets.VERCEL_SYNC_URL || 'https://shopping-fetch-ten.vercel.app' }}/api/github/sync-stars/self-trigger" || true
 

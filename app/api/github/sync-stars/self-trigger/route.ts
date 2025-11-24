@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 10
 
-const SYNC_INTERVAL = 1000
-const MAX_SYNCS_PER_CALL = 8
+const SYNC_INTERVAL = 3000
+const MAX_SYNCS_PER_CALL = 3
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
