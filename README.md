@@ -1,173 +1,103 @@
-# Fetch.ai Merchandise
+# Fetch.ai Merchandise Store
 
-A modern e-commerce platform for official Fetch.ai merchandise with AI-powered shopping using Fetch.ai uagents.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?logo=supabase)](https://supabase.com)
+[![Fetch.ai](https://img.shields.io/badge/Fetch.ai-uAgents-purple)](https://fetch.ai)
+
+A modern e-commerce platform for official Fetch.ai merchandise with AI-powered shopping capabilities using Fetch.ai uAgents.
 
 ## Features
 
-- 🛍️ **Product Management**: Full admin panel for managing t-shirt inventory
-- 🎨 **Modern UI**: Beautiful gradient design with dark theme
-- 📦 **Stock Management**: Real-time inventory tracking by size (S, M, L, XL, XXL)
-- 🤖 **AI Agent**: uagents-based shopping agent for LLM-powered product queries and purchases
-- ☁️ **Supabase Integration**: Robust database backend
-- 🚀 **Next.js 14**: Built with the latest Next.js and TypeScript
+- **Product Catalog** — Browse Fetch.ai branded t-shirts with images, sizes, and pricing
+- **Admin Panel** — Full inventory management dashboard for adding and updating products
+- **Stock Management** — Real-time inventory tracking by size (S, M, L, XL, XXL)
+- **AI Shopping Agent** — uAgents-based conversational agent for LLM-powered product queries and purchases
+- **Dark Mode** — Theme toggle with system preference detection
+- **Responsive Design** — Gradient-based modern UI with Tailwind CSS
 
 ## Tech Stack
 
-- **Framework**: Next.js 14
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: Shadcn UI
-- **Database**: Supabase
-- **AI Agent**: Fetch.ai uagents
-- **Icons**: Lucide React
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS + Shadcn UI |
+| Database | Supabase |
+| AI Agent | Fetch.ai uAgents |
+| Icons | Lucide React |
+| Deployment | Vercel |
 
-## Setup
+## Getting Started
 
-### 1. Install Dependencies
+### Prerequisites
+
+- Node.js 18+
+- Supabase project
+
+### Installation
 
 ```bash
+git clone https://github.com/gautammanak1/shopping-fetch.git
+cd shopping-fetch
 npm install
 ```
 
-### 2. Environment Variables
+### Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 3. Database Setup
+### Database Setup
 
-Run the SQL script in your Supabase dashboard to create the necessary tables:
+Run the SQL script in your Supabase dashboard to create the products table, or use the provided `supabase-products.sql`.
 
-```bash
-# Use the supabase-products.sql file
-```
-
-Or manually create the tables using the SQL provided in `supabase-products.sql`.
-
-### 4. Run Development Server
+### Development
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the store.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Admin Panel
-
-Navigate to `/admin` to access the admin panel where you can:
-- Add new t-shirt products
-- Edit existing products
-- Manage stock levels by size
-- Delete products
-
-## AI Agent Setup
-
-### Prerequisites
-
-The AI agent requires Python 3.8+ and uagents with chat protocol support.
-
-### Install Python Dependencies
+### Build
 
 ```bash
-cd agent
-pip install -r requirements.txt
+npm run build
+npm start
 ```
 
-### Configure Agent
+## Project Structure
 
-Create a `.env` file in the `agent` directory or set environment variables:
+```
+├── app/
+│   ├── admin/          # Admin panel for product management
+│   ├── api/            # API routes
+│   ├── layout.tsx      # Root layout with theme provider
+│   └── page.tsx        # Landing page / product catalog
+├── components/
+│   ├── ui/             # Shadcn UI components
+│   ├── theme-provider.tsx
+│   └── theme-toggle.tsx
+├── config/             # App configuration
+├── lib/                # Utility functions & Supabase client
+├── public/             # Static assets
+└── scripts/            # Utility scripts
+```
+
+## Deployment
+
+Deploy to Vercel with one click or configure via `vercel.json`:
 
 ```bash
-# Required
-export SHOPPING_AGENT_SEED="your_seed_phrase_here"
-
-# Optional
-export API_BASE_URL="http://localhost:3000/api"
+vercel deploy
 ```
-
-### Run the Agent
-
-1. Make sure your Next.js server is running on port 3000
-2. Start the agent:
-
-```bash
-python agent/shopping_agent.py
-```
-
-The agent will print its address. Use this address in your client code.
-
-### Using the Agent
-
-**Interactive Chat:**
-```bash
-python agent/client.py
-```
-
-**Programmatic Usage:**
-```python
-from agent.client import ShoppingChatClient
-
-client = ShoppingChatClient("agent_address")
-response = await client.chat("Show me all t-shirts")
-```
-
-The agent directly parses natural language queries and calls the API to browse products and place orders.
-
-## API Endpoints
-
-### Products
-
-- `GET /api/products` - Get all active products
-- `GET /api/products?active=false` - Get all products (including inactive)
-- `POST /api/products` - Create a new product
-- `GET /api/products/[id]` - Get a specific product
-- `PATCH /api/products/[id]` - Update a product
-- `DELETE /api/products/[id]` - Delete a product
-
-### Orders
-
-- `POST /api/orders` - Place an order
-
-### Agent
-
-- `POST /api/agent/query` - Query products via agent-friendly endpoint
-
-## Product Structure
-
-Each product includes:
-- Name
-- Description (default: "Made from 100% organic ring-spun cotton, this unisex t-shirt is a total must-have. It's high-quality, super comfy, and best of all—eco-friendly.")
-- Price
-- Image URL (uses images from `/public` folder: 1.avif - 5.avif)
-- Sizes: S, M, L, XL, XXL
-- Stock levels per size
-- Active status
-
-## Usage
-
-1. **Admin**: Go to `/admin` to add products with images and stock levels
-2. **Shopping**: Browse products on the homepage and select size to purchase
-3. **AI Agent**: Use the Python client or integrate the agent into your application for LLM-powered shopping
-
-## Product Images
-
-The app uses images from the `public` folder:
-- `/1.avif` through `/5.avif`
-
-Make sure these images are available in your `public` directory.
-
-## How It Works
-
-1. **Admin adds products** through the admin panel with images, descriptions, prices, and stock levels
-2. **Customers browse** the store and select products by size
-3. **Orders are placed** and stock is automatically updated
-4. **AI Agent** can query products using natural language and place orders programmatically
 
 ## License
 
 MIT
-# shopping-fetch
